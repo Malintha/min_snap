@@ -7,8 +7,9 @@ using namespace Eigen;
 using namespace std;
 USING_NAMESPACE_QPOASES
 
-void blockDiag(real_t *A, real_t *B) {
-	//implement the block diagonal matrix concatenation of 2 arrays 
+void blockDiag(real_t *A, real_t *B, int counter) {
+	//implement the block diagonal matrix concatenation for arrays 
+
 }
 
 void set_H(real_t *H, int n, int K, int M, int DIM, vector<float> tList) {
@@ -46,7 +47,7 @@ void set_H(real_t *H, int n, int K, int M, int DIM, vector<float> tList) {
 						Hn[i] = 0;
 					}
 				}
-			blockDiag(Hd, Hn);
+			blockDiag(Hd, Hn, d);
 			}
 		}
 
@@ -90,7 +91,7 @@ int main() {
 
     real_t H[nx*nx], A[1*nx], eqConstraints[nConstraints];
 
-	set_H(H, n, K, M, DIM);
+	set_H(H, n, K, M, DIM, tList);
 
 
 }
