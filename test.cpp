@@ -37,6 +37,7 @@ vector<double> getAccTimeVec(double t) {
 
 void printmat(vector<double> *H) {
     int n = sqrt(H->size());
+    cout<<"Dim: "<<n<<"x"<<n<<endl;
     for(int i=0;i<H->size();i++) {
         int c = i%n;
         int r = i/n;
@@ -50,6 +51,8 @@ void printmat(vector<double> *H) {
 
 void printmat(vector<double> *H, int cols) {
     int rows = H->size()/cols;
+    cout<<"Dim: "<<rows<<"x"<<cols<<endl;
+
     for(int i=0;i<H->size();i++) {
         int c = i%cols;
         int r = i/rows;
@@ -110,40 +113,13 @@ void reSizeMat(vector<double> *A, int prevCols, int newRows, int newCols) {
     fill(B.begin(),B.begin() + newCols*newRows, 0);
     for(int i=0;i<newCols*newRows;i++) {
         int r = i/newCols;
-        int c = i%newCols;
-    
+        int c = i%newCols;    
         if(r < prevRows && c < prevCols) {
             B[i] = A->at(r*prevCols + c);
         }
     }
     *A = B;
 }
-
-// void blockDiag(vector<double> *H, vector<double> Hn) {
-//     int HnRows = sqrt(Hn.size());
-//     int currDim = sqrt(H->size());
-//     int nblocks = currDim/HnRows;
-//     int newDim = HnRows*(nblocks+1);
-//     reSizeMat(H, currDim, newDim);
-//     double* fp = H->data();
-//     for(int i=0;i<(newDim*newDim);i++) {
-//         int c = i%newDim;
-//         int r = i/newDim;
-//         if(r > currDim -1 || c > currDim -1) {
-//             if(r<currDim && c > currDim-1) {
-//                 fp[i] = 0;
-//             }
-//             else if(r>currDim-1 && c < currDim) {
-//                 fp[i] = 0;
-//             }
-//             else {
-//                 int r_n = r%HnRows;
-//                 int c_n = c%HnRows;
-//                 fp[i] = (Hn[r_n*HnRows + c_n]);
-//             }
-//         }
-//     }
-// }
 
 void blockDiag(vector<double> *H, int HCols, vector<double> Hn, int HnCols) {
     int HnRows = Hn.size()/HnCols;
@@ -153,9 +129,8 @@ void blockDiag(vector<double> *H, int HCols, vector<double> Hn, int HnCols) {
     int nblocks = HRows/HnRows;
     int newRows = HnRows*(nblocks+1);
     int newCols = HnCols*(nblocks+1);
-    cout<<"new dim: "<<newRows<<" "<<newCols<<endl;
     reSizeMat(H, HCols, newRows, newCols);
-    printmat(H, newCols);
+    // printmat(H, newCols);
     double* fp = H->data();
     for(int i=0;i<(newRows*newCols);i++) {
         int c = i%newCols;
@@ -175,8 +150,6 @@ void blockDiag(vector<double> *H, int HCols, vector<double> Hn, int HnCols) {
         }
     }
 }
-
-
 
 int main() {
 	vector<Vector3d> posList;
@@ -204,9 +177,7 @@ int main() {
     int M = 1; //number of splines
     int D = 3; //dimensions
     int nx = n*M*K*D; //number of decision variables
-    // int nConstraints = posList.size() + 4; //init and final velocity + acceleration = 0 (constraints per dim)
-    // real_t H[nx*nx], eqConstraints[nConstraints];
-
+    int wpts = posList.size();
 //construct Hessian
     vector<double> kstacked;
     for(int k=0;k<K;k++) {
@@ -217,26 +188,24 @@ int main() {
             vector<double> dstacked;
             for(int d=0;d<D;d++) {
                 vector<double> hblock = getHblock(t0, t1);
-                blockDiag(&dstacked, n*d, hblock, n);
-                // printmat(&dstacked);
+                blockDiag(&dstacked, d*n, hblock, n);
             }
-        // blockDiag(&mstacked, dstacked);
+        blockDiag(&mstacked, m*D*n, dstacked, D*n);
         }
-    // blockDiag(&kstacked, mstacked);
+    blockDiag(&kstacked,k*M*D*n, mstacked, M*D*n);
     }
+    // cout<<"H: "<<endl;
     // printmat(&kstacked);
 
+//construct A and constraint matrices
     vector<double> A;
     vector<double> lb, ub;
-//construct A and constraint matrices
     for(int k=0;k<K;k++) {
-        for(int m=0;m<posList.size();m++) {
-            // cout<<"m: "<<m<<" t: "<<tList[m]<<endl;
+        vector<double> mstacked;
+        for(int m=0;m<wpts;m++) {
             double t = tList[m];
-            vector<double> Ad;
             vector<double> dstacked;
             for(int d=0;d<D;d++) {
-
                 vector<double> dblock;
                 //position row
                 vector<double> tPos = getPosTimeVec(t);
@@ -255,10 +224,13 @@ int main() {
                         dblock.push_back(tAcc[i]);
                     }
                 }
-                // printmat(&dblock, dblock.size()/n, n);
+                blockDiag(&dstacked,n*D,dblock,n);
             }
+            blockDiag(&mstacked, m*D*n, dstacked, D*n);
         }
+        // blockDiag(&A, k*wpts*D*n,mstacked, wpts*D*n);
     }
+    // printmat(&A, K*wpts*D*n);
 
     // vector<double> test(10);
     // fill(test.begin(),test.begin()+10,1);
