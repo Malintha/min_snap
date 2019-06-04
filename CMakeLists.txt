@@ -11,7 +11,7 @@ include_directories(
 
 add_executable(qptest
   # minsnap.cpp
-  test.cpp
+  te.cpp
 )
 
 target_link_libraries(qptest

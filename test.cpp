@@ -50,7 +50,8 @@ void printmat(vector<double> *H) {
 }
 
 void printmat(vector<double> *H, int cols) {
-    int rows = H->size()/cols;
+    int rows;
+    cols == 0? rows = 0: rows = H->size()/cols;
     cout<<"Dim: "<<rows<<"x"<<cols<<endl;
 
     for(int i=0;i<H->size();i++) {
@@ -125,6 +126,7 @@ void blockDiag(vector<double> *H, int HCols, vector<double> Hn, int HnCols) {
     int HnRows = Hn.size()/HnCols;
     int HRows;
     HCols == 0 ? HRows = 0 : HRows = H->size()/HCols;
+    cout<<"HCols "<<HCols<<" "<<HRows<<" Hn "<<HnCols<<" "<<HnRows<<endl;
     // int currDim = sqrt(H->size());
     int nblocks = HRows/HnRows;
     int newRows = HnRows*(nblocks+1);
@@ -179,21 +181,22 @@ int main() {
     int nx = n*M*K*D; //number of decision variables
     int wpts = posList.size();
 //construct Hessian
-    vector<double> kstacked;
-    for(int k=0;k<K;k++) {
-        vector<double> mstacked;
-        for(int m=0;m<M;m++) {
-            double t0 = tList[m];
-            double t1 = tList[m+1];
-            vector<double> dstacked;
-            for(int d=0;d<D;d++) {
-                vector<double> hblock = getHblock(t0, t1);
-                blockDiag(&dstacked, d*n, hblock, n);
-            }
-        blockDiag(&mstacked, m*D*n, dstacked, D*n);
-        }
-    blockDiag(&kstacked,k*M*D*n, mstacked, M*D*n);
-    }
+    // vector<double> kstacked;
+    // for(int k=0;k<K;k++) {
+    //     vector<double> mstacked;
+    //     for(int m=0;m<M;m++) {
+    //         double t0 = tList[m];
+    //         double t1 = tList[m+1];
+    //         vector<double> dstacked;
+    //         for(int d=0;d<D;d++) {
+    //             vector<double> hblock = getHblock(t0, t1);
+    //             blockDiag(&dstacked, d*n, hblock, n);
+    //         }
+    //     blockDiag(&mstacked, m*D*n, dstacked, D*n);
+    //     }
+    // blockDiag(&kstacked,k*M*D*n, mstacked, M*D*n);
+    // }
+
     // cout<<"H: "<<endl;
     // printmat(&kstacked);
 
@@ -224,8 +227,16 @@ int main() {
                         dblock.push_back(tAcc[i]);
                     }
                 }
+                cout<<"dblock "<<dblock.size()<<"dim: "<<d<<endl;
+                printmat(&dblock,n);
                 blockDiag(&dstacked,n*D,dblock,n);
+                cout<<"dstacked"<<endl;
+                printmat(&dstacked,(d+1)*n);
+
             }
+            cout<<"outer "<<dstacked.size()<<endl;
+            // printmat(&dstacked,21);
+
             blockDiag(&mstacked, m*D*n, dstacked, D*n);
         }
         // blockDiag(&A, k*wpts*D*n,mstacked, wpts*D*n);
