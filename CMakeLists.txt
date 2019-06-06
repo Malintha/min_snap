@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(qptest)
 
+set(LDFLAGS= "-L. -lqpOASES.so")
+
 # set (CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
@@ -12,6 +14,7 @@ include_directories(
 add_executable(qptest
   # minsnap.cpp
   te.cpp
+  # t1.cpp
 )
 
 target_link_libraries(qptest

@@ -6,7 +6,6 @@
 
 using namespace Eigen;
 using namespace std;
-USING_NAMESPACE_QPOASES
 
 MatrixXf getPosTimeVec(double t) {
     MatrixXf posTimes(1,7);
@@ -33,13 +32,19 @@ MatrixXf getHblock(double t0, double t1) {
     hblock(0,0) = 2*72*360*(pow(t1,5)-pow(t0,5));
     hblock(1,1) = 2*40*120*(pow(t1,3)-pow(t0,3));
     hblock(2,2) = 2*576*(t1-t0);
-    hblock(3,0) = 2*30*720*(pow(t1,4)-pow(t0,4));
-    hblock(4,1) = 2*24*120*(pow(t1,2)-pow(t0,2));
-    hblock(5,2) = 2*16*360*(pow(t1,3)-pow(t0,3));
+    hblock(1,0) = 30*720*(pow(t1,4)-pow(t0,4));
+    hblock(0,1) = 30*720*(pow(t1,4)-pow(t0,4));
+    hblock(2,1) = 24*120*(pow(t1,2)-pow(t0,2));
+    hblock(1,2) = 24*120*(pow(t1,2)-pow(t0,2));
+    hblock(0,2) = 16*360*(pow(t1,3)-pow(t0,3));
+    hblock(2,0) = 16*360*(pow(t1,3)-pow(t0,3));
     return hblock;
 }
 
+
 int main() {
+USING_NAMESPACE_QPOASES
+
 	vector<Vector3d> posList;
 	Vector3d p1, p2, p3;
 	p1 << 0,0,2;
@@ -79,7 +84,7 @@ int main() {
                 MatrixXf hblock = getHblock(t0, t1);
                 dstacked.block<7,7>(d*7,d*7) = hblock;
             }
-            mstacked.block<7*3,7*3>(7*3*m,7*3*m) = dstacked;
+            mstacked.block<7*D,7*D>(7*D*m,7*D*m) = dstacked;
         }
         H.block<M*D*7,M*D*7>(n*D*M*k,n*D*M*k) = mstacked;
     }
@@ -88,7 +93,8 @@ int main() {
 // TODO: change the first param of rows allocator of block() to const
     const int constraints = (posList.size() + 4)*D*K;
     MatrixXf A(constraints, nx);
-    vector<double> lb, ub;
+    vector<double> lb;
+
     for(int k=0;k<K;k++) {
         MatrixXf dstacked(constraints/K, n*D);
         dstacked.fill(0);
@@ -105,42 +111,83 @@ int main() {
                 //position row
                 MatrixXf tPos = getPosTimeVec(t);
                 mdblock.block<1,7>(0,0) = tPos;
+                lb.push_back(posList[m][d]);
                 if(m==0 || m==posList.size()-1) {
                     //add velocity row
                     MatrixXf tVel = getVelTimeVec(t);
                     mdblock.block<1,7>(1,0) = tVel;
+                    lb.push_back(0);
                     //acceleration row
                     MatrixXf tAcc = getAccTimeVec(t);
                     mdblock.block<1,7>(2,0) = tAcc;
+                    lb.push_back(0);
                 }
                 int rowIdx;
                 m == 0? rowIdx = 0 : rowIdx = m+2;
-                mstacked.block<3, 7>(rowIdx, 0) = mdblock;
+                mstacked.block<3, 7>(rowIdx, 0) = mdblock; //max constraints per waypoint per dimension
             }
             int dColIdx = n*d;
             int dRowIdx = dConstraints*d;
-            dstacked.block<7,n>(dRowIdx, dColIdx) = mstacked;
+            dstacked.block<7,n>(dRowIdx, dColIdx) = mstacked; //constraints per dimension with 3 wpts
         }
         int kRowIdx = dstacked.rows();
         int kColIdx = dstacked.cols();
         A.block<21,n*D>(k*kRowIdx, k*kColIdx) = dstacked;
     }
-    cout<<"A: "<<A.cols()<<" "<<A.rows()<<endl<<A<<endl;
+
+    vector<double> ub(lb.size());
+
+    real_t lb_r[lb.size()];
+    real_t ub_r[lb.size()];
+    copy(lb.begin(), lb.begin()+21,lb_r);
+    copy(lb.begin(), lb.begin()+21,ub_r);
+
+    real_t A_r[A.size()];
+    MatrixXf A_t = A.transpose();
+    cout<<"A: "<<A.size()<<" "<<A.rows()<<" "<<A.cols()<<endl;
+    float* ap = A_t.data();
+    for(int i=0;i<A.size();i++) {
+        A_r[i] = *ap++;
+    }
+
+    real_t H_r[H.size()];
+    MatrixXf H_t = H.transpose();
+    cout<<"H: "<<H.size()<<" "<<H.rows()<<" "<<H.cols()<<endl;
+    float* hp = H_t.data();
+    for(int i=0;i<H.size();i++) {
+        H_r[i] = *hp++;
+    }
+    
+    real_t g[21];
+    fill(g, g+21, 0);
+
+    real_t ubt[21];
+    fill(ubt, ubt+21, -50);
+    real_t lbt[21];
+    fill(lbt, lbt+21, 50);
 
 
-//   cout << "Block in the middle" << endl;
-//   cout << m1.block<2,2>(1,1) << endl << endl;
-//   for (int i = 1; i <= 3; ++i)
-//   {
-//     cout << "Block of size " << i << "x" << i << endl;
-//     cout << m1.block(0,0,i,i) << endl << endl;
-//   }
 
-    // MatrixXf dstacked(14,14);
-    // dstacked.fill(0);
-    // MatrixXf hblock1 = getHblock(0, 1);
-    // MatrixXf hblock2 = getHblock(1,2);
-    // dstacked.block<7,7>(0,0) = hblock1;
-    // dstacked.block<7,7>(7,7) = hblock2;
-    // cout<<dstacked<<endl;
+	/* Setting up QProblem object. */
+	QProblem example(21,21 );
+
+	Options options;
+	example.setOptions( options );
+
+	int_t nWSR = 100;
+	example.init( H_r,g,A_r,nullptr,nullptr,lb_r,ub_r, nWSR );
+
+	real_t xOpt[21];
+	example.getPrimalSolution( xOpt );
+    for(int i=0;i<21;i++) {
+        cout<<xOpt[i]<<endl;
+    }
+
+
+
+	// example.printOptions();
+    
+	return 0;
+
+
 }
