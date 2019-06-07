@@ -41,7 +41,6 @@ MatrixXf getHblock(double t0, double t1) {
     return hblock;
 }
 
-
 int main() {
 USING_NAMESPACE_QPOASES
 
@@ -49,7 +48,7 @@ USING_NAMESPACE_QPOASES
 	Vector3d p1, p2, p3;
 	p1 << 0,0,2;
 	p2 << 5,5,2;
-	p3 << 0,10,2;
+	p3 << 8,8,2;
 	posList.push_back(p1);
 	posList.push_back(p2);
 	posList.push_back(p3);
@@ -69,20 +68,27 @@ USING_NAMESPACE_QPOASES
     int K = 1; //number of drones
     const int M = 1; //number of splines
     const int D = 3; //dimensions
-    int nx = n*M*K*D; //number of decision variables
-    const int wpts = posList.size();
+    int nx = n*K*D; //number of decision variables
+    const int nwpts = posList.size();
+    int nChecks = 2; //number of interim checks for velocity and acceleration
+
+    const int nc = (posList.size() + 4 + 2*nChecks*(posList.size()-1))*D*K;
+    MatrixXf A(nc, nx);
+    vector<double> lba;
+    vector<double> uba;
+cout<<"nx: "<<nx<<" nc: "<<nc<<endl;
 // construct Hessian
     MatrixXf H(K*M*D*n, K*M*D*n);
     for(int k=0;k<K;k++) {
         MatrixXf mstacked(M*D*n, M*D*n);
         for(int m=0;m<M;m++) {
-            double t0 = tList[m];
-            double t1 = tList[m+1];
+            double t0 = tList[0];
+            double t1 = tList[tList.size()-1];
             MatrixXf dstacked(D*n,D*n);
             dstacked.fill(0);
             for(int d=0;d<D;d++) {
                 MatrixXf hblock = getHblock(t0, t1);
-                dstacked.block<7,7>(d*7,d*7) = hblock;
+                dstacked.block<n,n>(d*7,d*7) = hblock;
             }
             mstacked.block<7*D,7*D>(7*D*m,7*D*m) = dstacked;
         }
@@ -90,61 +96,102 @@ USING_NAMESPACE_QPOASES
     }
 
 //construct A and constraint matrices
-// TODO: change the first param of rows allocator of block() to const
-    const int constraints = (posList.size() + 4)*D*K;
-    MatrixXf A(constraints, nx);
-    vector<double> lb;
-
     for(int k=0;k<K;k++) {
-        MatrixXf dstacked(constraints/K, n*D);
+        MatrixXf dstacked(nc/(K), n*D);
         dstacked.fill(0);
         for(int d=0;d<D;d++) {
-            int dConstraints = constraints/(K*D);
+            int dConstraints = nc/(K*D);
             MatrixXf mstacked(dConstraints, n);
             mstacked.fill(0);
-            for(int m=0;m<wpts;m++) {
+            vector<double> lba_d;
+            vector<double> uba_d;
+            for(int m=0;m<nwpts;m++) {
+                vector<double> lba_m;
+                vector<double> uba_m;
+                int ccount = 0;
                 double t = tList[m];
                 int mdConstraints;
-                m==0 || m==wpts-1 ? mdConstraints = 3: mdConstraints = 1;
+                m==0 || m== nwpts-1 ? mdConstraints = 3: mdConstraints = 1;
+                if(nwpts > 0) {
+                    m < nwpts - 1 ? mdConstraints += 2*nChecks : mdConstraints = mdConstraints;
+                }
                 MatrixXf mdblock(mdConstraints, n);
                 mdblock.fill(0);
-                //position row
+
+                //position equality
                 MatrixXf tPos = getPosTimeVec(t);
-                mdblock.block<1,7>(0,0) = tPos;
-                lb.push_back(posList[m][d]);
+                mdblock.block<1,n>(ccount++,0) = tPos;
+
+                lba.push_back(posList[m][d]);
+                uba.push_back(posList[m][d]);
                 if(m==0 || m==posList.size()-1) {
-                    //add velocity row
+                    //add velocity equality
                     MatrixXf tVel = getVelTimeVec(t);
-                    mdblock.block<1,7>(1,0) = tVel;
-                    lb.push_back(0);
-                    //acceleration row
+                    mdblock.block<1,n>(ccount++,0) = tVel;
+                    lba.push_back(0);
+                    uba.push_back(0);
+                    //acceleration equality
                     MatrixXf tAcc = getAccTimeVec(t);
-                    mdblock.block<1,7>(2,0) = tAcc;
-                    lb.push_back(0);
+                    mdblock.block<1,n>(ccount++,0) = tAcc;
+                    lba.push_back(0);
+                    uba.push_back(0);
                 }
+                // cout<<endl<<mdblock<<endl;
+                //add interim velocity and acceleration limits
+                if(m < nwpts-1) {
+                    double t1 = tList[m+1];
+                    for(int i=1;i <= nChecks;i++) {
+                        double tCheck = t + ((double)i/(nChecks+1))*(t1 - t);
+                        MatrixXf tVel = getVelTimeVec(tCheck);
+                        // cout<<"tvel: "<<tVel<<endl;
+                        // cout<<"before mdblock: "<<endl<<mdblock<<endl;
+                        mdblock.block<1,n>(ccount++, 0) = tVel;
+                        // cout<<"after mdblock: "<<endl<<mdblock<<endl;
+                        
+                        lba.push_back(-max_vel);
+                        uba.push_back(max_vel);
+
+                        MatrixXf tAcc = getAccTimeVec(tCheck);
+                        mdblock.block<1,n>(ccount++,0) = tAcc;
+
+                        lba.push_back(-max_acc);
+                        uba.push_back(max_acc);
+                    }
+                }
+                // cout<<"ccount: "<<ccount<<endl;              
+
                 int rowIdx;
-                m == 0? rowIdx = 0 : rowIdx = m+2;
-                mstacked.block<3, 7>(rowIdx, 0) = mdblock; //max constraints per waypoint per dimension
+                int mcrows = mdblock.rows();
+                m == 0? rowIdx = 0 : rowIdx = 2+m*(2*nChecks + 1);
+                // cout<<"mdblock"<<endl<<mdblock<<endl;
+                mstacked.block(rowIdx, 0, mcrows, n) = mdblock;
+                // cout<<"mstacked"<<endl<<mstacked<<endl;
             }
             int dColIdx = n*d;
             int dRowIdx = dConstraints*d;
-            dstacked.block<7,n>(dRowIdx, dColIdx) = mstacked; //constraints per dimension with 3 wpts
+            int dcrows = mstacked.rows();
+            int dccols = mstacked.cols();
+            dstacked.block(dcrows*d, dccols*d, dcrows, dccols) = mstacked;
+            // cout<<"mstacked"<<endl<<mstacked<<endl;
+            // if(d==2) {
+            //     cout<<endl<<"d: "<<dstacked.rows()<<" "<<dstacked.cols()<<endl<<d<<endl<<dstacked<<endl;
+            // }
         }
         int kRowIdx = dstacked.rows();
         int kColIdx = dstacked.cols();
-        A.block<21,n*D>(k*kRowIdx, k*kColIdx) = dstacked;
+        // A.block(k*kRowIdx, k*kColIdx,21,n*D) = dstacked;
+        A = dstacked;
     }
 
-    vector<double> ub(lb.size());
 
-    real_t lb_r[lb.size()];
-    real_t ub_r[lb.size()];
-    copy(lb.begin(), lb.begin()+21,lb_r);
-    copy(lb.begin(), lb.begin()+21,ub_r);
+    real_t lb_r[lba.size()];
+    real_t ub_r[uba.size()];
+    copy(lba.begin(), lba.begin()+nc,lb_r);
+    copy(uba.begin(), uba.begin()+nc,ub_r);
 
     real_t A_r[A.size()];
     MatrixXf A_t = A.transpose();
-    cout<<"A: "<<A.size()<<" "<<A.rows()<<" "<<A.cols()<<endl;
+    cout<<"A: "<<A.rows()<<" "<<A.cols()<<endl;
     float* ap = A_t.data();
     for(int i=0;i<A.size();i++) {
         A_r[i] = *ap++;
@@ -152,41 +199,36 @@ USING_NAMESPACE_QPOASES
 
     real_t H_r[H.size()];
     MatrixXf H_t = H.transpose();
-    cout<<"H: "<<H.size()<<" "<<H.rows()<<" "<<H.cols()<<endl;
+    cout<<"H: "<<H.rows()<<" "<<H.cols()<<endl;
     float* hp = H_t.data();
     for(int i=0;i<H.size();i++) {
         H_r[i] = *hp++;
     }
     
-    real_t g[21];
-    fill(g, g+21, 0);
+    cout<<"lba: "<<lba.size()<<endl<<"uba: "<<uba.size()<<endl<<endl;
 
-    real_t ubt[21];
-    fill(ubt, ubt+21, -50);
-    real_t lbt[21];
-    fill(lbt, lbt+21, 50);
+    real_t g[nx];
+    fill(g, g+nx, 0);
 
-
-
-	/* Setting up QProblem object. */
-	QProblem example(21,21 );
+	QProblem example(nx,nc);
 
 	Options options;
+    options.setToMPC();
+
+    options.printLevel = PrintLevel::PL_NONE;
 	example.setOptions( options );
 
 	int_t nWSR = 100;
 	example.init( H_r,g,A_r,nullptr,nullptr,lb_r,ub_r, nWSR );
 
-	real_t xOpt[21];
+	real_t xOpt[nx];
 	example.getPrimalSolution( xOpt );
-    for(int i=0;i<21;i++) {
-        cout<<xOpt[i]<<endl;
+    for(int i=1;i<=nx;i++) {
+        cout<<xOpt[i-1]<<" ";
+        if(i%7 == 0)
+            cout<<endl;
     }
 
-
-
-	// example.printOptions();
-    
 	return 0;
 
 
