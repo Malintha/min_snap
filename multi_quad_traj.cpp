@@ -45,38 +45,44 @@ int main() {
 USING_NAMESPACE_QPOASES
 
 	vector<Vector3d> posList;
-	Vector3d p1, p2, p3;
+	Vector3d p1, p2, p3, p4;
 	p1 << 0,0,2;
 	p2 << 5,5,2;
-	p3 << 8,8,2;
+	p3 << 8,7,2;
+    p4 << 10,10,3;
 	posList.push_back(p1);
 	posList.push_back(p2);
 	posList.push_back(p3);
+	posList.push_back(p4);
 
-	double t1, t2, t3;
+	double t1, t2, t3, t4;
 	t1 = 0;
 	t2 = 5;
 	t3 = 10;
+    t4 = 13;
+
 	vector<double> tList;
 	tList.push_back(t1);
 	tList.push_back(t2);
 	tList.push_back(t3);
+	tList.push_back(t4);
 
-	double max_vel = 4;
-	double max_acc = 5;
+	double max_vel = 4; //maximum velocity m/s
+	double max_acc = 5; //maximum acceleration m/s/s
 	const int n = 7; //number of coefficients (degree + 1) 
-    int K = 1; //number of drones
+    const int K = 3; //number of drones
     const int M = 1; //number of splines
     const int D = 3; //dimensions
     int nx = n*K*D; //number of decision variables
     const int nwpts = posList.size();
     int nChecks = 2; //number of interim checks for velocity and acceleration
-
     const int nc = (posList.size() + 4 + 2*nChecks*(posList.size()-1))*D*K;
+
     MatrixXf A(nc, nx);
     vector<double> lba;
     vector<double> uba;
-cout<<"nx: "<<nx<<" nc: "<<nc<<endl;
+    cout<<"nx: "<<nx<<" nc: "<<nc<<endl;
+
 // construct Hessian
     MatrixXf H(K*M*D*n, K*M*D*n);
     for(int k=0;k<K;k++) {
@@ -136,18 +142,13 @@ cout<<"nx: "<<nx<<" nc: "<<nc<<endl;
                     lba.push_back(0);
                     uba.push_back(0);
                 }
-                // cout<<endl<<mdblock<<endl;
                 //add interim velocity and acceleration limits
                 if(m < nwpts-1) {
                     double t1 = tList[m+1];
                     for(int i=1;i <= nChecks;i++) {
                         double tCheck = t + ((double)i/(nChecks+1))*(t1 - t);
                         MatrixXf tVel = getVelTimeVec(tCheck);
-                        // cout<<"tvel: "<<tVel<<endl;
-                        // cout<<"before mdblock: "<<endl<<mdblock<<endl;
-                        mdblock.block<1,n>(ccount++, 0) = tVel;
-                        // cout<<"after mdblock: "<<endl<<mdblock<<endl;
-                        
+                        mdblock.block<1,n>(ccount++, 0) = tVel;                        
                         lba.push_back(-max_vel);
                         uba.push_back(max_vel);
 
@@ -157,8 +158,7 @@ cout<<"nx: "<<nx<<" nc: "<<nc<<endl;
                         lba.push_back(-max_acc);
                         uba.push_back(max_acc);
                     }
-                }
-                // cout<<"ccount: "<<ccount<<endl;              
+                }          
 
                 int rowIdx;
                 int mcrows = mdblock.rows();
@@ -172,17 +172,14 @@ cout<<"nx: "<<nx<<" nc: "<<nc<<endl;
             int dcrows = mstacked.rows();
             int dccols = mstacked.cols();
             dstacked.block(dcrows*d, dccols*d, dcrows, dccols) = mstacked;
-            // cout<<"mstacked"<<endl<<mstacked<<endl;
-            // if(d==2) {
-            //     cout<<endl<<"d: "<<dstacked.rows()<<" "<<dstacked.cols()<<endl<<d<<endl<<dstacked<<endl;
-            // }
         }
-        int kRowIdx = dstacked.rows();
-        int kColIdx = dstacked.cols();
-        // A.block(k*kRowIdx, k*kColIdx,21,n*D) = dstacked;
-        A = dstacked;
-    }
 
+        cout<<"dStacked: "<<dstacked.rows()<<" "<<dstacked.cols()<<endl;
+        int kRowIdx = dstacked.rows()*k;
+        int kColIdx = dstacked.cols()*k;
+        A.block(kRowIdx, kColIdx,nc/K,n*D) = dstacked;
+        // A = dstacked;
+    }
 
     real_t lb_r[lba.size()];
     real_t ub_r[uba.size()];
@@ -210,26 +207,21 @@ cout<<"nx: "<<nx<<" nc: "<<nc<<endl;
     real_t g[nx];
     fill(g, g+nx, 0);
 
-	QProblem example(nx,nc);
+	QProblem qp(nx,nc);
 
 	Options options;
     options.setToMPC();
 
     options.printLevel = PrintLevel::PL_NONE;
-	example.setOptions( options );
-
+	qp.setOptions( options );
 	int_t nWSR = 100;
-	example.init( H_r,g,A_r,nullptr,nullptr,lb_r,ub_r, nWSR );
-
+	qp.init( H_r,g,A_r,nullptr,nullptr,lb_r,ub_r, nWSR );
 	real_t xOpt[nx];
-	example.getPrimalSolution( xOpt );
+	qp.getPrimalSolution( xOpt );
     for(int i=1;i<=nx;i++) {
         cout<<xOpt[i-1]<<" ";
         if(i%7 == 0)
             cout<<endl;
     }
-
 	return 0;
-
-
 }

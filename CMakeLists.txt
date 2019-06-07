@@ -12,9 +12,7 @@ include_directories(
 	/usr/local/include)
 
 add_executable(qptest
-  # minsnap.cpp
-  te.cpp
-  # t1.cpp
+  multi_quad_traj.cpp
 )
 
 target_link_libraries(qptest
