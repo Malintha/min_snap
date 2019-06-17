@@ -1,0 +1,15 @@
+subgoals: 2
+drone1:
+  subgoalset1:
+    subgoal: [0, 0,0]
+    subgoal: [50, 50,0]
+  subgoalset2:
+    subgoal: [0, 0,0]
+    subgoal: [10, 50,0]
+drone2:
+  subgoalset1:
+    subgoal: [0, 0,0]
+    subgoal: [50, 50,0]
+  subgoalset2:
+    subgoal: [0, 0,0]
+    subgoal: [10, 20,0]

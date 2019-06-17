@@ -12,9 +12,12 @@ include_directories(
 	/usr/local/include)
 
 add_executable(qptest
-  multi_quad_traj.cpp
+  # multi_quad_traj.cpp
+  # yaml.h
+  yaml-test.cpp
 )
 
 target_link_libraries(qptest
   qpOASES
+  yaml
 )

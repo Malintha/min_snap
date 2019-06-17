@@ -2,10 +2,12 @@
 #include <eigen3/Eigen/Dense>
 #include <iostream>
 #include <vector>
-#include <algorithm> 
+#include <algorithm>
+#include <yaml.h>
 
 using namespace Eigen;
 using namespace std;
+USING_NAMESPACE_QPOASES
 
 MatrixXf getPosTimeVec(double t) {
     MatrixXf posTimes(1,7);
@@ -41,36 +43,37 @@ MatrixXf getHblock(double t0, double t1) {
     return hblock;
 }
 
+std::vector<double> matrix2vec(MatrixXf mat) {
+    vector<double> v1;
+
+}
+
 int main() {
-USING_NAMESPACE_QPOASES
+
 
 	vector<Vector3d> posList;
 	Vector3d p1, p2, p3, p4;
-	p1 << 0,0,2;
-	p2 << 5,5,2;
-	p3 << 8,7,2;
-    p4 << 10,10,3;
+	p1 << 0,0,2.5;
+	p2 << 5,0,2.5;
+	p3 << 10,0,2.5;
 	posList.push_back(p1);
 	posList.push_back(p2);
 	posList.push_back(p3);
-	posList.push_back(p4);
 
 	double t1, t2, t3, t4;
 	t1 = 0;
 	t2 = 5;
 	t3 = 10;
-    t4 = 13;
 
 	vector<double> tList;
 	tList.push_back(t1);
 	tList.push_back(t2);
 	tList.push_back(t3);
-	tList.push_back(t4);
 
 	double max_vel = 4; //maximum velocity m/s
 	double max_acc = 5; //maximum acceleration m/s/s
 	const int n = 7; //number of coefficients (degree + 1) 
-    const int K = 3; //number of drones
+    const int K = 1; //number of drones
     const int M = 1; //number of splines
     const int D = 3; //dimensions
     int nx = n*K*D; //number of decision variables
