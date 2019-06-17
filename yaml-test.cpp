@@ -80,11 +80,6 @@ int main() {
             const std::regex subgoals_regex("subgoals");
             std::smatch pieces_match;
 
-            if(std::regex_match(s, subgoals_regex)) {
-                subgoals_node = true;
-                continue;
-            }
-
             if(std::regex_match(s,pieces_match,drone_regex)) {
                 drone_node = true;
                 ssub_match sub_match = pieces_match[1];
@@ -99,6 +94,10 @@ int main() {
                 subgoal_id = std::stoi(piece);
                 continue;
             }
+            else if(std::regex_match(s, subgoals_regex)) {
+                subgoals_node = true;
+                continue;
+            }
 
             if(subgoals_node) {
                 subgoals = std::stoi(s);
@@ -111,15 +110,13 @@ int main() {
 
                     if(pos_sequence.size() < 3*subgoals) {
                         pos_sequence.push_back(std::stod(s));
-                        cout<<"s: "<<s<<" pos_sequence: "<<pos_sequence.size()<<endl;
+                        // cout<<"s: "<<s<<" inserted: "<<pos_sequence.size()<<endl;
                     }
-                    else {
-                        cout<<"pushing: "<<pos_sequence.size()<<endl;
+                    if(pos_sequence.size() == 3*subgoals) {
                         Vector3d p;
                         Trajectory tr;
                         for(int i=0;i<pos_sequence.size();i++) {
                             int d = i%3;
-                            cout<<"i: "<<pos_sequence[i]<<endl;
                             if(d <= 2) {
                                 p[d] = pos_sequence[i];
                             }
@@ -130,10 +127,7 @@ int main() {
                         tr_list.push_back(tr);
                         cout<<"pushed: "<<pos_sequence.size()<<endl;
                         pos_sequence.clear();
-                    cout<<"pos_sequence_size: "<<pos_sequence.size()<<endl;
-
                     }
-
                 }
             }
         break;
@@ -143,6 +137,6 @@ int main() {
   } while (event.type != YAML_STREAM_END_EVENT);
   yaml_event_delete(&event);
 
-std::cout<<tr_list[3].pos[0][0]<<endl;
+std::cout<<tr_list[1].pos[1][0]<<endl;
 
 }
