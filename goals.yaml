@@ -1,18 +1,25 @@
 subgoals: 2
 times:
-  timeset1: [0, 5,]
-  timeset2: [10, 15]
+  timeset0: [0, 5]
+  timeset1: [0, 5]
+
+drone0:
+  subgoalset0:
+    subgoal: [0, 0, 2.5]
+    subgoal: [5, 5, 2.5]
+    # subgoal: [10, 10, 2.5]
+    # subgoal: [8, 8, 2.5]
+
+  subgoalset1:
+    subgoal: [0, 0, 2.5]
+    subgoal: [5, 5, 2.5]
+    # subgoal: [10, 10, 2.5]
+    # subgoal: [11, 12, 2.5]
+
 drone1:
+  subgoalset0:
+    subgoal: [-4.5, 0, 2.5]
+    subgoal: [0, -4.5, 2.5]
   subgoalset1:
-    subgoal: [0, 0,0]
-    subgoal: [50, 50,0]
-  subgoalset2:
-    subgoal: [0, 0,0]
-    subgoal: [10, 50,0]
-drone2:
-  subgoalset1:
-    subgoal: [0, 0,0]
-    subgoal: [50, 50,0]
-  subgoalset2:
-    subgoal: [0, 0,0]
-    subgoal: [10, 20,0]
+    subgoal: [0, -4.5, 2.5]
+    subgoal: [9, 9, 2.5]

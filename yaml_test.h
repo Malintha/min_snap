@@ -1,3 +1,6 @@
+#ifndef yamltest_h
+#define yamltest_h
+
 #include <algorithm>
 #include <eigen3/Eigen/Dense>
 #include <iostream>
@@ -5,44 +8,41 @@
 #include <string>
 #include <vector>
 #include <yaml.h>
+#include "Trajectory.h"
 
 using namespace std;
 using namespace Eigen;
 
-struct Trajectory {
-  std::vector<Eigen::Vector3d> pos; 
-};
+vector<Trajectory> processYamlFile(char* fPath, int horizon_id) {
+    FILE *fh = fopen(fPath, "r");
+    yaml_parser_t parser;
+    yaml_token_t token;
+    yaml_event_t event;
 
-int main() {
-  FILE *fh = fopen("goals.yaml", "r");
-  yaml_parser_t parser;
-  yaml_token_t token; /* new variable */
-  yaml_event_t event; /* New variable */
+    if (!yaml_parser_initialize(&parser)) {
+        std::cout << "Failed to initialize parser!\n" << std::endl;
+    }
+    if (fh == NULL) {
+        std::cout << "Failed to open file!\n" << std::endl;
+    }
 
-  if (!yaml_parser_initialize(&parser))
-    std::cout << "Failed to initialize parser!\n" << std::endl;
-  if (fh == NULL)
-    std::cout << "Failed to open file!\n" << std::endl;
+    yaml_parser_set_input_file(&parser, fh);
 
-  //   /* Set input file */
-  yaml_parser_set_input_file(&parser, fh);
-
-    int curr_horizon = 2;
     int subgoal_id = 0;
     int drone_id = 0;
-    int subgoals = 0;
-    bool subgoals_node = false;
     bool drone_node = false;
     bool subgoalset_node = false;
     bool subgoal_node = false;
+    bool subgoals_node = false;
+    int subgoals = 0;
     bool times_node = false;
     bool timeset_node = false;
     int timeset_id = 0;
-    
-    vector<double> t_list;
-    vector<Trajectory> tr_list;
-    vector<double> pos_sequence;
 
+    vector<double> pos_sequence;
+    vector<Trajectory> tr_list;
+    vector<double> t_list;
+  
     do {
         if (!yaml_parser_parse(&parser, &event)) {
         printf("Parser error %d\n", parser.error);
@@ -120,20 +120,19 @@ int main() {
                 }
 
                 if(timeset_node && times_node) {
-                    if(timeset_id == curr_horizon) {
-                        cout<<"time: "<<s<<endl;
+                    if(timeset_id == horizon_id) {
+                        t_list.push_back(std::stod(s));
                     }
                 }
 
                 if(subgoalset_node && subgoal_node) {
-                    if(subgoal_id == curr_horizon) {
+                    if(subgoal_id == horizon_id) {
 
                         if(pos_sequence.size() < 3*subgoals) {
                             pos_sequence.push_back(std::stod(s));
-                            // cout<<"s: "<<s<<" inserted: "<<pos_sequence.size()<<endl;
                         }
                         if(pos_sequence.size() == 3*subgoals) {
-                            Vector3d p;
+                            Eigen::Vector3d p;
                             Trajectory tr;
                             for(int i=0;i<pos_sequence.size();i++) {
                                 int d = i%3;
@@ -144,8 +143,8 @@ int main() {
                                     tr.pos.push_back(p);
                                 }
                             }
+                            tr.tList = t_list;
                             tr_list.push_back(tr);
-                            cout<<"pushed: "<<pos_sequence.size()<<endl;
                             pos_sequence.clear();
                         }
                     }
@@ -153,11 +152,12 @@ int main() {
         break;
         }
         if (event.type != YAML_STREAM_END_EVENT) {
-            yaml_event_delete(&event);    
+            yaml_event_delete(&event);
         }
-    }
+    } 
     while (event.type != YAML_STREAM_END_EVENT);
     yaml_event_delete(&event);
-    std::cout<<tr_list[1].pos[1][0]<<endl;
+    return tr_list;
+    }
 
-}
+#endif

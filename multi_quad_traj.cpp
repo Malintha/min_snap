@@ -7,7 +7,6 @@
 
 using namespace Eigen;
 using namespace std;
-USING_NAMESPACE_QPOASES
 
 MatrixXf getPosTimeVec(double t) {
     MatrixXf posTimes(1,7);
@@ -43,22 +42,17 @@ MatrixXf getHblock(double t0, double t1) {
     return hblock;
 }
 
-std::vector<double> matrix2vec(MatrixXf mat) {
-    vector<double> v1;
-
-}
-
 int main() {
-
-
+    USING_NAMESPACE_QPOASES
+    
 	vector<Vector3d> posList;
 	Vector3d p1, p2, p3, p4;
-	p1 << 0,0,2.5;
-	p2 << 5,0,2.5;
-	p3 << 10,0,2.5;
+	p1 << 5,0,2.5;
+	p2 << 5,5,2.5;
+	p3 << 5,10,2.5;
 	posList.push_back(p1);
 	posList.push_back(p2);
-	posList.push_back(p3);
+	// posList.push_back(p3);
 
 	double t1, t2, t3, t4;
 	t1 = 0;
@@ -68,17 +62,17 @@ int main() {
 	vector<double> tList;
 	tList.push_back(t1);
 	tList.push_back(t2);
-	tList.push_back(t3);
+	// tList.push_back(t3);
 
 	double max_vel = 4; //maximum velocity m/s
 	double max_acc = 5; //maximum acceleration m/s/s
 	const int n = 7; //number of coefficients (degree + 1) 
     const int K = 1; //number of drones
     const int M = 1; //number of splines
-    const int D = 3; //dimensions
+    const int D = 1; //dimensions
     int nx = n*K*D; //number of decision variables
     const int nwpts = posList.size();
-    int nChecks = 2; //number of interim checks for velocity and acceleration
+    int nChecks = 0; //number of interim checks for velocity and acceleration
     const int nc = (posList.size() + 4 + 2*nChecks*(posList.size()-1))*D*K;
 
     MatrixXf A(nc, nx);
@@ -186,12 +180,21 @@ int main() {
 
     real_t lb_r[lba.size()];
     real_t ub_r[uba.size()];
+    cout<<"lba"<<endl;
+    for(int i=0;i<lba.size();i++) {
+        cout<<lba[i]<<endl;
+    }
+    cout<<"uba: "<<endl;
+    for(int i=0;i<uba.size();i++) {
+        cout<<lba[i]<<endl;
+    }
+
     copy(lba.begin(), lba.begin()+nc,lb_r);
     copy(uba.begin(), uba.begin()+nc,ub_r);
 
     real_t A_r[A.size()];
     MatrixXf A_t = A.transpose();
-    cout<<"A: "<<A.rows()<<" "<<A.cols()<<endl;
+    cout<<"A: "<<A.rows()<<" "<<A.cols()<<endl<<A_t<<endl;
     float* ap = A_t.data();
     for(int i=0;i<A.size();i++) {
         A_r[i] = *ap++;
@@ -199,7 +202,7 @@ int main() {
 
     real_t H_r[H.size()];
     MatrixXf H_t = H.transpose();
-    cout<<"H: "<<H.rows()<<" "<<H.cols()<<endl;
+    cout<<"H: "<<H.rows()<<" "<<H.cols()<<endl<<H_t<<endl;;
     float* hp = H_t.data();
     for(int i=0;i<H.size();i++) {
         H_r[i] = *hp++;
@@ -209,20 +212,33 @@ int main() {
 
     real_t g[nx];
     fill(g, g+nx, 0);
-
 	QProblem qp(nx,nc);
-
 	Options options;
     options.setToMPC();
-
-    options.printLevel = PrintLevel::PL_NONE;
 	qp.setOptions( options );
 	int_t nWSR = 100;
-	qp.init( H_r,g,A_r,nullptr,nullptr,lb_r,ub_r, nWSR );
+	qp.init( H_r,g,A_r,nullptr,nullptr,lb_r,ub_r, nWSR,0 );
 	real_t xOpt[nx];
 	qp.getPrimalSolution( xOpt );
     for(int i=1;i<=nx;i++) {
         cout<<xOpt[i-1]<<" ";
+        if(i%7 == 0)
+            cout<<endl;
+    }
+    
+
+//repeat
+	QProblem qp1(nx,nc);
+	Options options1;
+    options1.setToMPC();
+	qp1.setOptions( options1 );
+	qp1.init( H_r,g,A_r,nullptr,nullptr,lb_r,ub_r, nWSR,0 );
+	real_t xOpt1[nx];
+	qp1.getPrimalSolution( xOpt1 );
+
+
+    for(int i=1;i<=nx;i++) {
+        cout<<xOpt1[i-1]<<" ";
         if(i%7 == 0)
             cout<<endl;
     }
