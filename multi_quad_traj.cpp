@@ -48,7 +48,7 @@ int main() {
 	vector<Vector3d> posList;
 	Vector3d p1, p2, p3, p4;
 	p1 << 5,0,2.5;
-	p2 << 5,5,2.5;
+	p2 << 10,5,2.5;
 	p3 << 5,10,2.5;
 	posList.push_back(p1);
 	posList.push_back(p2);
@@ -194,7 +194,6 @@ int main() {
 
     real_t A_r[A.size()];
     MatrixXf A_t = A.transpose();
-    cout<<"A: "<<A.rows()<<" "<<A.cols()<<endl<<A_t<<endl;
     float* ap = A_t.data();
     for(int i=0;i<A.size();i++) {
         A_r[i] = *ap++;
@@ -202,7 +201,6 @@ int main() {
 
     real_t H_r[H.size()];
     MatrixXf H_t = H.transpose();
-    cout<<"H: "<<H.rows()<<" "<<H.cols()<<endl<<H_t<<endl;;
     float* hp = H_t.data();
     for(int i=0;i<H.size();i++) {
         H_r[i] = *hp++;
@@ -210,37 +208,42 @@ int main() {
     
     cout<<"lba: "<<lba.size()<<endl<<"uba: "<<uba.size()<<endl<<endl;
 
-    real_t g[nx];
-    fill(g, g+nx, 0);
-	QProblem qp(nx,nc);
-	Options options;
-    options.setToMPC();
-	qp.setOptions( options );
+    real_t g[] = {0,0,0,0,0,0,0};
+	QProblem qp(7,6);
 	int_t nWSR = 100;
 	qp.init( H_r,g,A_r,nullptr,nullptr,lb_r,ub_r, nWSR,0 );
 	real_t xOpt[nx];
-	qp.getPrimalSolution( xOpt );
+    Options options;
+    options.setToMPC();
+	qp.setOptions( options );
+	qp.getPrimalSolution(xOpt);
     for(int i=1;i<=nx;i++) {
         cout<<xOpt[i-1]<<" ";
         if(i%7 == 0)
             cout<<endl;
     }
     
+    // cout<<"H: "<<H.rows()<<" "<<H.cols()<<endl<<H_t<<endl;;
+    // cout<<"A: "<<A.rows()<<" "<<A.cols()<<endl<<A_t<<endl;
 
 //repeat
-	QProblem qp1(nx,nc);
-	Options options1;
+    // real_t lba_1[] = {7,1,0,12,2,0};
+    // real_t uba_1[] = {7,1,0,12,2,0};
+	QProblem qp1(7,6);
+	int_t nWSR1 = 100;
+
+	qp1.init( H_r,g,A_r,nullptr,nullptr,lb_r,ub_r, nWSR1,0);
+    Options options1;
     options1.setToMPC();
 	qp1.setOptions( options1 );
-	qp1.init( H_r,g,A_r,nullptr,nullptr,lb_r,ub_r, nWSR,0 );
 	real_t xOpt1[nx];
 	qp1.getPrimalSolution( xOpt1 );
-
 
     for(int i=1;i<=nx;i++) {
         cout<<xOpt1[i-1]<<" ";
         if(i%7 == 0)
             cout<<endl;
     }
+
 	return 0;
 }

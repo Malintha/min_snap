@@ -67,7 +67,7 @@ int main( )
 	int_t nWSR = 100;
 
 	/* Setting up SQProblem object. */
-	QProblem example(7,5);
+	QProblem example(7,6);
 	returnValue rv = example.init( H_r,g,A_r,nullptr,nullptr,lba,uba, nWSR,0 );
     cout<<"rv: "<<rv<<endl;
 	real_t xOpt[7];
@@ -81,20 +81,20 @@ int main( )
             cout<<endl;
     }
 
+    // cout<<"H: "<<H.rows()<<" "<<H.cols()<<endl<<H<<endl;
+    // cout<<"A: "<<A.rows()<<" "<<A.cols()<<endl<<A<<endl;
+
 //repeat
-
-	/* Solve second QP. */
-	QProblem example1(7, 5);
+    real_t lba_1[] = {7,1,0,12,2,0};
+    real_t uba_1[] = {7,1,0,12,2,0};
+	QProblem qp1(7,6);
 	Options options1;
-	options1.setToMPC();
-    example1.setOptions(options1);	
-	// nWSR = 10;
-	returnValue rv1 = example1.init( H_r,g,A_r,nullptr,nullptr,lba,uba, nWSR,0 );
-    cout<<"rv: "<<rv1<<endl;
-
-	/* Get and print solution of second QP. */
+    options1.setToMPC();
+	qp1.setOptions( options1 );
+	qp1.init( H_r,g,A_r,nullptr,nullptr,lba_1,uba_1, nWSR,0 );
 	real_t xOpt1[7];
-	example1.getPrimalSolution( xOpt1 );
+	qp1.getPrimalSolution( xOpt1 );
+
     for(int i=1;i<=7;i++) {
         cout<<xOpt1[i-1]<<" ";
         if(i%7 == 0)

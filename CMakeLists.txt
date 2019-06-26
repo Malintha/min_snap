@@ -12,8 +12,8 @@ include_directories(
 	/usr/local/include)
 
 add_executable(qptest
-  # multi_quad_traj.cpp
-  example.cpp
+  multi_quad_traj.cpp
+  # example.cpp
   # main.cpp
   # solver.h
   # solver.cpp
